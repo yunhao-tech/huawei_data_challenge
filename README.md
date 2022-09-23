@@ -1,5 +1,8 @@
 # smartfactoryinstruments-starting-kit
 
+Sicheng & Yunhao project
+
+
 Starting kit for the "Layout of Smart Factory Instruments" challenge
 
 In this challenge you can design an C++ or a Python solution.
