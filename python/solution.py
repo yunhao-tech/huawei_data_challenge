@@ -1,5 +1,6 @@
 import sys
 from data import InputData, OutputData, Config
+from typing import List
 
 
 def Max(a, b):
@@ -46,11 +47,11 @@ def main(inputData: InputData) -> OutputData:
     """This function must exist with the specified input and output
     arguments for the submission to work"""
 
-    workshops = []
+    workshops: List[WorkShop] = []
     for id in range(inputData.N):
         workshops.append(WorkShop())
 
-    # Count the earliest and latest time that each workshop can happen
+    # Count the earliest and latest time that one workshop can enter
     for wid in range(inputData.M):
         window = inputData.windows[wid]
         workshop = workshops[window.workshopIndex]
@@ -89,6 +90,8 @@ def main(inputData: InputData) -> OutputData:
         isDeviceInPipeline[edge.recvDevice] = True
 
     # Make statistics of the workshop area where
+    # Collect statistics on the workshop region that support a certain
+    # type of equipment in the workshop.
     for rid in range(inputData.R):
         region = inputData.regions[rid]
         nid = region.workshopIndex
