@@ -26,11 +26,25 @@ def _parse_file(path: str) -> List[Union[int, List[int]]]:
 
 @dataclass
 class Energy:
+    '''
+    Define Energy
+    
+    Attributes:
+        processTime
+    '''
     processTime: int
+
 
 
 @dataclass
 class Region:
+    '''
+    Define region
+
+    Attributes:
+        workshopIndex
+        energyType
+    '''
     workshopIndex: int
     energyType: int
 
@@ -41,6 +55,15 @@ class Region:
 
 @dataclass
 class Window:
+    '''
+    Define window
+    
+    Attributes:
+        canSelfLoop
+        workshopIndex   
+        costFactor
+        enginesSupport
+    '''
     canSelfLoop: int
     workshopIndex: int
     costFactor: int
@@ -62,6 +85,13 @@ class Window:
 
 @dataclass
 class Device:
+    '''
+    Define device
+
+    Attributes: 
+        engineType
+        energyCosts
+    '''
     engineType: int
     energyCosts: List[int]
 
@@ -72,6 +102,14 @@ class Device:
 
 @dataclass
 class Edge:
+    '''
+    Define edge in flow chart
+
+    Attributes:
+        type
+        sendDevice
+        recvDevice
+    '''
     type: int
     sendDevice: int
     recvDevice: int
@@ -83,7 +121,13 @@ class Edge:
 
 @dataclass
 class Pipeline:
-    '''Pipeline of the core production line'''
+    '''
+    Pipeline of the core production line
+
+    Attributes:
+        edgeNum
+        edgeIndexs
+    '''
     edgeNum: int
     edgeIndexs: List[int]
 
@@ -108,8 +152,8 @@ class InputData:
     M: int
     "Number of windows in the first loopback mode"
     W: int
-    windows: List[Window]
     "Number of windows"
+    windows: List[Window]
     D: int
     "Number of devices"
     devices: List[Device]
