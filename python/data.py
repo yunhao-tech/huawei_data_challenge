@@ -83,6 +83,7 @@ class Edge:
 
 @dataclass
 class Pipeline:
+    '''Pipeline of the core production line'''
     edgeNum: int
     edgeIndexs: List[int]
 
@@ -95,17 +96,25 @@ class Pipeline:
 @dataclass
 class InputData:
     K: int
+    "Estimated number of production times of the core production line"
     energys: List[Energy]
-    N: int
+    N: int;  'number of workshops'
+    "Number of workshops"
     R: int
+    "Number of workshop areas"
     regions: List[Region]
     L: int
+    "Maximum number of loopbacks"
     M: int
+    "Number of windows in the first loopback mode"
     W: int
     windows: List[Window]
+    "Number of windows"
     D: int
+    "Number of devices"
     devices: List[Device]
     E: int
+    "Number of edges in a flowchart"
     edges: List[Edge]
     pipeline: Pipeline
 
