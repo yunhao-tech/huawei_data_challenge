@@ -8,6 +8,14 @@ class Config:
     ENERGY_TYPE_NUM = 5
     ENGINE_TYPE_NUM = 3
 
+class WorkShop:
+    def __init__(self):
+        self.minTi = Config.MAX_U32
+        self.maxTi = 0
+        self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
+        # return
+    def __str__(self):
+        return "minTi:{0}\tmaxTi{1}\tanyRidOfEngine{2}\n".format(self.minTi, self.maxTi, self.anyRidOfEngine)
 
 def _parse_file(path: str) -> List[Union[int, List[int]]]:
     """Parse a file as a double sequence of int"""
