@@ -13,7 +13,8 @@ class WorkShop:
         self.minTi = Config.MAX_U32
         self.maxTi = 0
         self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
-        # return
+        '''第i个元素储存支持第i种设备的area id(rid)，可以是列表（即多个满足条件的area）'''
+        return
     def __str__(self):
         return "minTi:{0}\tmaxTi{1}\tanyRidOfEngine{2}\n".format(self.minTi, self.maxTi, self.anyRidOfEngine)
 
@@ -155,6 +156,7 @@ class InputData:
     R: int
     "Number of workshop areas"
     regions: List[Region]
+    '''List of Regions'''
     L: int
     "Maximum number of loopbacks"
     M: int

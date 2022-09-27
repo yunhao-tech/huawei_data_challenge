@@ -1,7 +1,9 @@
 import sys
 from data import InputData, OutputData, Config
-from typing import List
+from typing import List 
+from data import Edge
 
+DEBUG = False
 
 def Max(a, b):
     if a > b:
@@ -9,6 +11,70 @@ def Max(a, b):
     else:
         return b
 
+def computeCost(inputData:InputData, outputData:OutputData):
+    areaMatchingCost: int = 0
+    windowMatchingCost: int = 0
+    for did in range(outputData.deviceNum):
+        device = inputData.devices[did]
+        rid = outputData.regionIndexs[did]
+        
+        # compute areaMatchingCost
+        energyType = inputData.regions[rid].energyType
+        installCost = device.energyCosts[energyType]
+        areaMatchingCost += installCost
+
+    # get the devices on core production line
+    edgeOnCoreProductionLine: List[Edge] = []
+    deviceOnCoreProductionLine: List[int] = []
+    for eid in inputData.pipeline.edgeIndexs:
+        edge = inputData.edges[eid]
+        edgeOnCoreProductionLine.append(edge)
+        # print("edge {} type {}".format(eid, edge.type))
+    for edge in edgeOnCoreProductionLine:
+        deviceOnCoreProductionLine.append(edge.sendDevice)
+    deviceOnCoreProductionLine.append(edge.recvDevice)
+
+    # find out window process time (device -> area -> energy -> processTime)
+    windowProcessTimeRaw: List[List[int]] = [[0] for i in range(inputData.W)] # do not using * since list is not elementary type, * will make shallow copy
+    for id, did in enumerate(deviceOnCoreProductionLine):
+        wid = outputData.timeWindowIndexs[id]
+        rid = outputData.regionIndexs[did]
+        energyType = inputData.regions[rid].energyType
+        processTime = inputData.energys[energyType].processTime
+        windowProcessTimeRaw[wid].append(processTime)
+    windowProcessTime = list(map(max, windowProcessTimeRaw))
+    # compute entry time
+    windowEntryTimes: List[int] = [0] * inputData.W
+    for id, edge in enumerate(edgeOnCoreProductionLine):
+        wid = outputData.timeWindowIndexs[id]
+        wid_next = outputData.timeWindowIndexs[id + 1]
+        windowEntryTimes[wid] += 1
+        # if two consecutive windows are the same and the edge is red, i.e collabarative relation
+        # only count once entry time
+        if wid == wid_next and edge.type == 1:
+            windowEntryTimes[wid] -= 1 # minus one since count one more time
+            # print("collaboration in window {}".format(wid))
+    # Don't forget the last device
+    windowEntryTimes[wid_next] += 1
+
+    windowProcessCost = 0
+    windowPresetCost = 0
+    for wid in range(inputData.W):
+        entryTimes = windowEntryTimes[wid]
+        processTime = windowProcessTime[wid]
+        windowProcessCost += processTime * entryTimes
+        windowPresetCost += processTime * inputData.windows[wid].costFactor
+    windowProcessCost *= inputData.K
+    windowMatchingCost = windowProcessCost + windowPresetCost
+    totalCost = areaMatchingCost + windowMatchingCost
+    if DEBUG:
+        print('areaMatchingCost:\t{}'.format(areaMatchingCost))
+        print('windowPresetCost:\t{}'.format(windowPresetCost))
+        print('windowProcessCost:\t{}'.format(windowProcessCost))
+        print('windowProcessTime:\t{}'.format(windowProcessTime))
+        print('windowEntryTimes:\t{}'.format(windowEntryTimes))
+        print('windowMatchingCost:\t{}'.format(windowMatchingCost))
+    return totalCost
 
 class WorkShop:
     def __init__(self, index):
@@ -85,11 +151,13 @@ def main(inputData: InputData) -> OutputData:
         if maxTi > workshop.maxTi:
             workshop.maxTi = maxTi
 
-    for workshop in workshops:
-        print(workshop.index)
+    if DEBUG:
+        for workshop in workshops:
+            print(workshop.index)
     workshops.sort(key=lambda de: de.minTi)
-    for workshop in workshops:
-        print(workshop.index)
+    if DEBUG:
+        for workshop in workshops:
+            print(workshop.index)
 
     # store the devices on the core production line
     isDeviceInPipeline = [False] * inputData.D
@@ -221,8 +289,14 @@ def main(inputData: InputData) -> OutputData:
 if __name__ == "__main__":
     # The following is only used for local tests
     import sys
+    import constants
 
     # inputData = InputData.from_file(sys.argv[1])
     inputData = InputData.from_file('./sample/sample.in')
     outputData = main(inputData)
     outputData.print()
+    print(computeCost(inputData, outputData))
+    outputData = constants.sample_output
+    outputData.print()
+    print(computeCost(inputData, outputData))
+    
