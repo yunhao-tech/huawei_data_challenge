@@ -1,4 +1,6 @@
 import sys
+import itertools
+import random
 from data import InputData, OutputData, Config
 from typing import List 
 from data import Edge
@@ -81,7 +83,7 @@ class WorkShop:
         self.index = index
         self.minTi = Config.MAX_U32
         self.maxTi = 0
-        self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
+        self.anyRidOfEngine = [[] for i in range(Config.ENGINE_TYPE_NUM)]
         '''第i个元素储存支持第i种设备的area id(rid)，可以是列表（即多个满足条件的area）'''
         return
 
@@ -177,16 +179,21 @@ def main(inputData: InputData) -> OutputData:
         workshop = workshops[nid]
         if region.energyType == 0:
             # this can be changed by a list of rid
-            workshop.anyRidOfEngine[0] = rid
-            workshop.anyRidOfEngine[1] = rid
+            workshop.anyRidOfEngine[0].append(rid)
+            workshop.anyRidOfEngine[1].append(rid)
         elif region.energyType == 1:
-            workshop.anyRidOfEngine[0] = rid
+            workshop.anyRidOfEngine[0].append(rid)
         elif region.energyType == 2:
-            workshop.anyRidOfEngine[1] = rid
+            workshop.anyRidOfEngine[1].append(rid)
         elif region.energyType == 3:
-            workshop.anyRidOfEngine[2] = rid
+            workshop.anyRidOfEngine[2].append(rid)
         elif region.energyType == 4:
-            workshop.anyRidOfEngine[2] = rid
+            workshop.anyRidOfEngine[2].append(rid)
+    
+    # delete the duplicate area in anyRidOfEngine.
+    # for workshop in workshops:
+    #     for i in range(len(workshop.anyRidOfEngine)):
+    #         workshop.anyRidOfEngine[i] = list(set(workshop.anyRidOfEngine[i]))
 
     # parse flowchart from edge-representation to node-representation
     # e.g nextEdgeMgr[0] stores the 0-th node's outgoing edge 
@@ -211,7 +218,7 @@ def main(inputData: InputData) -> OutputData:
             queue.Push(did)
 
     # distribute which area for each device
-    ridOfDid = [Config.MAX_U32] * inputData.D
+    ridOfDid = [[]] * inputData.D
     minTiOfDid = [0] * inputData.D
 
     # pid is the order of the device on the core production line
@@ -238,33 +245,34 @@ def main(inputData: InputData) -> OutputData:
                 if not window.enginesSupport[engineType]:
                     continue
                 workshop = workshops[window.workshopIndex]
-                rid = workshop.anyRidOfEngine[engineType]
+
                 # if the area doesn't support energy of the device of this engine type, i.e device installation constraint
-                if rid == Config.MAX_U32:
+                if len(workshop.anyRidOfEngine[engineType])==0:
                     continue
 
-                # put current device to this region/area
-                ridOfDid[curDid] = rid
                 # select this window for the window scheme of the core production line
                 widOfPid[pid] = wid
                 pid = pid + 1
                 preTi = ti
+
+                # put current device to those region/areas
+                ridOfDid[curDid] = workshop.anyRidOfEngine[engineType]
                 break
         else:
             engineType = inputData.devices[curDid].engineType
             for i in range(inputData.N):
                 workshop = workshops[i]
-                rid = workshop.anyRidOfEngine[engineType]
-                if rid == Config.MAX_U32:
+                if len(workshop.anyRidOfEngine[engineType])==0:
                     continue
+
                 if workshop.maxTi >= minTiOfDid[curDid]:
-                    ridOfDid[curDid] = rid
+                    ridOfDid[curDid] = workshop.anyRidOfEngine[engineType]
                     break
-        if ridOfDid[curDid] == Config.MAX_U32:
+        if len(ridOfDid[curDid]) == 0:
             print("wrong in %d" % curDid)
             exit()
         # record the workshop where the current device installed
-        workshop = workshops[inputData.regions[ridOfDid[curDid]].workshopIndex]
+        workshop = workshops[inputData.regions[ridOfDid[curDid][0]].workshopIndex]
         for eid in nextEdgeMgr[curDid]:
             edge = inputData.edges[eid]
             curDid = edge.recvDevice
@@ -277,13 +285,30 @@ def main(inputData: InputData) -> OutputData:
             if inCnt[curDid] == 0:
                 queue.Push(curDid)
 
-    outputData = OutputData(
-        deviceNum=inputData.D,
-        regionIndexs=ridOfDid,
-        stepNum=inputData.pipeline.edgeNum + 1,
-        timeWindowIndexs=widOfPid,
-    )
-    return outputData
+    possible_regionIndexs = [p for p in itertools.product(*ridOfDid)]
+    # n_selected  = min(int(len(possible_regionIndexs)/10), 100)
+    # selected_regionIndexs = random.sample(possible_regionIndexs, n_selected)
+
+    Costs = [float("inf")] * len(possible_regionIndexs)
+    for idx, region_device in enumerate(possible_regionIndexs):
+        outputData = OutputData(
+            deviceNum=inputData.D,
+            regionIndexs=region_device,
+            stepNum=inputData.pipeline.edgeNum + 1,
+            timeWindowIndexs=widOfPid,
+        )
+        Costs[idx] = computeCost(inputData, outputData)
+
+    cost = min(Costs)
+    best_regionIndex = Costs.index(cost)
+    outputData_FV = OutputData(
+            deviceNum=inputData.D,
+            regionIndexs=possible_regionIndexs[best_regionIndex],
+            stepNum=inputData.pipeline.edgeNum + 1,
+            timeWindowIndexs=widOfPid,
+        )
+
+    return outputData_FV
 
 
 if __name__ == "__main__":
@@ -296,7 +321,7 @@ if __name__ == "__main__":
     outputData = main(inputData)
     outputData.print()
     print(computeCost(inputData, outputData))
-    outputData = constants.sample_output
-    outputData.print()
-    print(computeCost(inputData, outputData))
+    # outputData = constants.sample_output
+    # outputData.print()
+    # print(computeCost(inputData, outputData))
     
