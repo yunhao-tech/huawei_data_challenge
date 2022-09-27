@@ -218,7 +218,7 @@ def main(inputData: InputData) -> OutputData:
             queue.Push(did)
 
     # distribute which area for each device
-    ridOfDid = [[]] * inputData.D
+    ridOfDid = [[] for i in range(inputData.D)]
     minTiOfDid = [0] * inputData.D
 
     # pid is the order of the device on the core production line
