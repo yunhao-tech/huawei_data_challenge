@@ -8,6 +8,15 @@ class Config:
     ENERGY_TYPE_NUM = 5
     ENGINE_TYPE_NUM = 3
 
+class WorkShop:
+    def __init__(self):
+        self.minTi = Config.MAX_U32
+        self.maxTi = 0
+        self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
+        '''第i个元素储存支持第i种设备的area id(rid)，可以是列表（即多个满足条件的area）'''
+        return
+    def __str__(self):
+        return "minTi:{0}\tmaxTi{1}\tanyRidOfEngine{2}\n".format(self.minTi, self.maxTi, self.anyRidOfEngine)
 
 def _parse_file(path: str) -> List[Union[int, List[int]]]:
     """Parse a file as a double sequence of int"""
@@ -26,11 +35,25 @@ def _parse_file(path: str) -> List[Union[int, List[int]]]:
 
 @dataclass
 class Energy:
+    '''
+    Define Energy
+    
+    Attributes:
+        processTime
+    '''
     processTime: int
+
 
 
 @dataclass
 class Region:
+    '''
+    Define region
+
+    Attributes:
+        workshopIndex
+        energyType
+    '''
     workshopIndex: int
     energyType: int
 
@@ -41,6 +64,15 @@ class Region:
 
 @dataclass
 class Window:
+    '''
+    Define window
+    
+    Attributes:
+        canSelfLoop
+        workshopIndex   
+        costFactor
+        enginesSupport
+    '''
     canSelfLoop: int
     workshopIndex: int
     costFactor: int
@@ -62,6 +94,13 @@ class Window:
 
 @dataclass
 class Device:
+    '''
+    Define device
+
+    Attributes: 
+        engineType
+        energyCosts
+    '''
     engineType: int
     energyCosts: List[int]
 
@@ -72,6 +111,14 @@ class Device:
 
 @dataclass
 class Edge:
+    '''
+    Define edge in flow chart
+
+    Attributes:
+        type
+        sendDevice
+        recvDevice
+    '''
     type: int
     sendDevice: int
     recvDevice: int
@@ -83,6 +130,13 @@ class Edge:
 
 @dataclass
 class Pipeline:
+    '''
+    Pipeline of the core production line
+
+    Attributes:
+        edgeNum
+        edgeIndexs
+    '''
     edgeNum: int
     edgeIndexs: List[int]
 
@@ -95,17 +149,26 @@ class Pipeline:
 @dataclass
 class InputData:
     K: int
+    "Estimated number of production times of the core production line"
     energys: List[Energy]
-    N: int
+    N: int;  'number of workshops'
+    "Number of workshops"
     R: int
+    "Number of workshop areas"
     regions: List[Region]
+    '''List of Regions'''
     L: int
+    "Maximum number of loopbacks"
     M: int
+    "Number of windows in the first loopback mode"
     W: int
+    "Number of windows"
     windows: List[Window]
     D: int
+    "Number of devices"
     devices: List[Device]
     E: int
+    "Number of edges in a flowchart"
     edges: List[Edge]
     pipeline: Pipeline
 
