@@ -1,5 +1,6 @@
 import sys
 import itertools
+import random
 from data import InputData, OutputData, Config
 from typing import List 
 from data import Edge
@@ -321,7 +322,7 @@ def main(inputData: InputData) -> OutputData:
 if __name__ == "__main__":
     # The following is only used for local tests
     import sys
-    # import constants
+    import constants
 
     inputData = InputData.from_file(sys.argv[1])
     # inputData = InputData.from_file('./sample/sample.in')
