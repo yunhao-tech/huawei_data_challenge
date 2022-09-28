@@ -286,12 +286,7 @@ def main(inputData: InputData) -> OutputData:
                 queue.Push(curDid)
 
     # print(ridsOfDid)
-    # ridOfDid = []
-    # for rids in ridsOfDid:
-    #     InstallCosts = [inputData.regions[rid].energyType for rid in rids]
-    #     idOfMinInstallCost = min(range(len(InstallCosts)), key=InstallCosts.__getitem__)
-    #     ridOfDid.append(rids[idOfMinInstallCost])
-    # print(ridOfDid)
+
     possible_regionIndexs = [p for p in itertools.product(*ridsOfDid)]
     # print(possible_regionIndexs)
     # n_selected  = min(int(len(possible_regionIndexs)/10), 100)
@@ -324,8 +319,8 @@ if __name__ == "__main__":
     import sys
     import constants
 
-    inputData = InputData.from_file(sys.argv[1])
-    # inputData = InputData.from_file('./sample/sample.in')
+    # inputData = InputData.from_file(sys.argv[1])
+    inputData = InputData.from_file('./sample/sample.in')
     outputData = main(inputData)
     outputData.print()
     # print(computeCost(inputData, outputData))
