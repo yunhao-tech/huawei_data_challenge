@@ -1,1 +1,4 @@
 __pycache__
+# for local debugging
+python/sample_data.py
+python/sample_solution.py

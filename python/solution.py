@@ -1,8 +1,8 @@
 import sys
 import itertools
-from data import InputData, OutputData, Config
+# from sample_data import InputData, OutputData, Config, Edge
+from data import InputData, OutputData, Config, Edge
 from typing import List 
-from data import Edge
 
 DEBUG = False
 
