@@ -1,9 +1,7 @@
 import sys
-import itertools
-import random
-from data import InputData, OutputData, Config
+# import itertools
+from data import InputData, OutputData, Config, Edge
 from typing import List 
-from data import Edge
 
 DEBUG = False
 
@@ -230,6 +228,7 @@ def main(inputData: InputData) -> OutputData:
     while not queue.IsEmpty():
         # current device
         curDid = queue.Pop()
+        # print(curDid)
         if isDeviceInPipeline[curDid]:
             startTi = minTiOfDid[curDid]
             engineType = inputData.devices[curDid].engineType
@@ -287,26 +286,23 @@ def main(inputData: InputData) -> OutputData:
 
     # print(ridsOfDid)
 
-    possible_regionIndexs = [p for p in itertools.product(*ridsOfDid)]
-    # print(possible_regionIndexs)
-    # n_selected  = min(int(len(possible_regionIndexs)/10), 100)
-    # selected_regionIndexs = random.sample(possible_regionIndexs, n_selected)
+    # possible_regionIndexs = [p for p in itertools.product(*ridsOfDid)]
 
-    Costs = [float("inf")] * len(possible_regionIndexs)
-    for idx, region_device in enumerate(possible_regionIndexs):
-        outputData = OutputData(
-            deviceNum=inputData.D,
-            regionIndexs=region_device,
-            stepNum=inputData.pipeline.edgeNum + 1,
-            timeWindowIndexs=widOfPid,
-        )
-        Costs[idx] = computeCost(inputData, outputData)
+    ridOfDid = []
+    for did, rids in enumerate(ridsOfDid):
+        if not isDeviceInPipeline[did]:
+            InstallCosts = [inputData.regions[rid].energyType for rid in rids]
+            idOfMinInstallCost = min(range(len(InstallCosts)), key=InstallCosts.__getitem__)
+            ridOfDid.append(rids[idOfMinInstallCost])
+        else:  
+            ProcessTime = [inputData.energys[inputData.regions[rid].energyType].processTime for rid in rids]
+            idOfMinProcessTime = min(range(len(ProcessTime)), key=ProcessTime.__getitem__)
+            ridOfDid.append(rids[idOfMinProcessTime])
 
-    cost = min(Costs)
-    best_regionIndex = Costs.index(cost)
+    print(ridOfDid)
     outputData_FV = OutputData(
             deviceNum=inputData.D,
-            regionIndexs=possible_regionIndexs[best_regionIndex],
+            regionIndexs= ridOfDid,
             stepNum=inputData.pipeline.edgeNum + 1,
             timeWindowIndexs=widOfPid,
         )
@@ -314,17 +310,50 @@ def main(inputData: InputData) -> OutputData:
     return outputData_FV
 
 
+    # print(possible_regionIndexs)
+    # n_selected  = min(int(len(possible_regionIndexs)/10), 100)
+    # selected_regionIndexs = random.sample(possible_regionIndexs, n_selected)
+
+    # Costs = [float("inf")] * len(possible_regionIndexs)
+    # for idx, region_device in enumerate(possible_regionIndexs):
+    #     outputData = OutputData(
+    #         deviceNum=inputData.D,
+    #         regionIndexs=region_device,
+    #         stepNum=inputData.pipeline.edgeNum + 1,
+    #         timeWindowIndexs=widOfPid,
+    #     )
+    #     Costs[idx] = computeCost(inputData, outputData)
+
+    # cost = min(Costs)
+    # best_regionIndex = Costs.index(cost)
+    # outputData_FV = OutputData(
+    #         deviceNum=inputData.D,
+    #         regionIndexs=possible_regionIndexs[best_regionIndex],
+    #         stepNum=inputData.pipeline.edgeNum + 1,
+    #         timeWindowIndexs=widOfPid,
+    #     )
+
+    # return outputData_FV
+
+
 if __name__ == "__main__":
     # The following is only used for local tests
     import sys
-    import constants
+    # import constants
 
-    # inputData = InputData.from_file(sys.argv[1])
-    inputData = InputData.from_file('./sample/sample.in')
+    inputData = InputData.from_file(sys.argv[1])
+    # inputData = InputData.from_file('./sample/sample.in')
     outputData = main(inputData)
     outputData.print()
     # print(computeCost(inputData, outputData))
+    # print(computeCost(inputData, outputData))
     # outputData = constants.sample_output
+    # print('sample_output')
     # outputData.print()
     # print(computeCost(inputData, outputData))
     
+    # for i in range(1,11,1):
+    #     outputData = eval('constants.sample_output{}'.format(i))
+    #     print('sample_output{}'.format(i))
+    #     # outputData.print()
+    #     print(computeCost(inputData, outputData))
