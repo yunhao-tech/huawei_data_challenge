@@ -1,9 +1,11 @@
 import sys
+import numpy as np
 # import itertools
 from data import InputData, OutputData, Config, Edge
-from typing import List 
+from typing import List
 
 DEBUG = False
+
 
 def Max(a, b):
     if a > b:
@@ -11,13 +13,42 @@ def Max(a, b):
     else:
         return b
 
-def computeCost(inputData:InputData, outputData:OutputData):
+
+def countWindowEntryTimes(inputData: InputData, timeWindowIndexs: List[int]):
+    edgeOnCoreProductionLine: List[Edge] = []
+
+    for eid in inputData.pipeline.edgeIndexs:
+        edge = inputData.edges[eid]
+        edgeOnCoreProductionLine.append(edge)
+        # print("edge {} type {}".format(eid, edge.type))
+
+    deviceOnCoreProductionLine: List[int] = []
+    for edge in edgeOnCoreProductionLine:
+        deviceOnCoreProductionLine.append(edge.sendDevice)
+    deviceOnCoreProductionLine.append(edge.recvDevice)
+
+    windowEntryTimes: List[int] = [0] * inputData.W
+    for id, edge in enumerate(edgeOnCoreProductionLine):
+        wid = timeWindowIndexs[id]
+        wid_next = timeWindowIndexs[id + 1]
+        windowEntryTimes[wid] += 1
+        # if two consecutive windows are the same and the edge is red, i.e collabarative relation
+        # only count once entry time
+        if wid == wid_next and edge.type == 1:
+            windowEntryTimes[wid] -= 1  # minus one since count one more time
+            # print("collaboration in window {}".format(wid))
+    # Don't forget the last device
+    windowEntryTimes[wid_next] += 1
+    return windowEntryTimes, deviceOnCoreProductionLine
+
+
+def computeCost(inputData: InputData, outputData: OutputData):
     areaMatchingCost: int = 0
     windowMatchingCost: int = 0
     for did in range(outputData.deviceNum):
         device = inputData.devices[did]
         rid = outputData.regionIndexs[did]
-        
+
         # compute areaMatchingCost
         energyType = inputData.regions[rid].energyType
         installCost = device.energyCosts[energyType]
@@ -35,7 +66,8 @@ def computeCost(inputData:InputData, outputData:OutputData):
     deviceOnCoreProductionLine.append(edge.recvDevice)
 
     # find out window process time (device -> area -> energy -> processTime)
-    windowProcessTimeRaw: List[List[int]] = [[0] for i in range(inputData.W)] # do not using * since list is not elementary type, * will make shallow copy
+    # do not using * since list is not elementary type, * will make shallow copy
+    windowProcessTimeRaw: List[List[int]] = [[0] for i in range(inputData.W)]
     for id, did in enumerate(deviceOnCoreProductionLine):
         wid = outputData.timeWindowIndexs[id]
         rid = outputData.regionIndexs[did]
@@ -52,7 +84,7 @@ def computeCost(inputData:InputData, outputData:OutputData):
         # if two consecutive windows are the same and the edge is red, i.e collabarative relation
         # only count once entry time
         if wid == wid_next and edge.type == 1:
-            windowEntryTimes[wid] -= 1 # minus one since count one more time
+            windowEntryTimes[wid] -= 1  # minus one since count one more time
             # print("collaboration in window {}".format(wid))
     # Don't forget the last device
     windowEntryTimes[wid_next] += 1
@@ -75,6 +107,7 @@ def computeCost(inputData:InputData, outputData:OutputData):
         print('windowEntryTimes:\t{}'.format(windowEntryTimes))
         print('windowMatchingCost:\t{}'.format(windowMatchingCost))
     return totalCost
+
 
 class WorkShop:
     def __init__(self, index):
@@ -187,14 +220,14 @@ def main(inputData: InputData) -> OutputData:
             workshop.anyRidOfEngine[2].append(rid)
         elif region.energyType == 4:
             workshop.anyRidOfEngine[2].append(rid)
-    
+
     # delete the duplicate area in anyRidOfEngine.
     # for workshop in workshops:
     #     for i in range(len(workshop.anyRidOfEngine)):
     #         workshop.anyRidOfEngine[i] = list(set(workshop.anyRidOfEngine[i]))
 
     # parse flowchart from edge-representation to node-representation
-    # e.g nextEdgeMgr[0] stores the 0-th node's outgoing edge 
+    # e.g nextEdgeMgr[0] stores the 0-th node's outgoing edge
     nextEdgeMgr = []
     prevEdgeMgr = []
     for did in range(inputData.D):
@@ -246,7 +279,7 @@ def main(inputData: InputData) -> OutputData:
                 workshop = workshops[window.workshopIndex]
 
                 # if the area doesn't support energy of the device of this engine type, i.e device installation constraint
-                if len(workshop.anyRidOfEngine[engineType])==0:
+                if len(workshop.anyRidOfEngine[engineType]) == 0:
                     continue
 
                 # select this window for the window scheme of the core production line
@@ -261,7 +294,7 @@ def main(inputData: InputData) -> OutputData:
             engineType = inputData.devices[curDid].engineType
             for i in range(inputData.N):
                 workshop = workshops[i]
-                if len(workshop.anyRidOfEngine[engineType])==0:
+                if len(workshop.anyRidOfEngine[engineType]) == 0:
                     continue
 
                 if workshop.maxTi >= minTiOfDid[curDid]:
@@ -271,7 +304,8 @@ def main(inputData: InputData) -> OutputData:
             print("wrong in %d" % curDid)
             exit()
         # record the workshop where the current device installed
-        workshop = workshops[inputData.regions[ridsOfDid[curDid][0]].workshopIndex]
+        workshop = workshops[inputData.regions[ridsOfDid[curDid]
+                                               [0]].workshopIndex]
         for eid in nextEdgeMgr[curDid]:
             edge = inputData.edges[eid]
             curDid = edge.recvDevice
@@ -289,26 +323,33 @@ def main(inputData: InputData) -> OutputData:
     # possible_regionIndexs = [p for p in itertools.product(*ridsOfDid)]
 
     ridOfDid = []
+    windowEntryTimes, deviceOnCoreProductionLine = countWindowEntryTimes(
+        inputData, widOfPid)
     for did, rids in enumerate(ridsOfDid):
+        InstallCosts = [inputData.regions[rid].energyType for rid in rids]
         if not isDeviceInPipeline[did]:
-            InstallCosts = [inputData.regions[rid].energyType for rid in rids]
-            idOfMinInstallCost = min(range(len(InstallCosts)), key=InstallCosts.__getitem__)
+            idOfMinInstallCost = min(
+                range(len(InstallCosts)), key=InstallCosts.__getitem__)
             ridOfDid.append(rids[idOfMinInstallCost])
-        else:  
-            ProcessTime = [inputData.energys[inputData.regions[rid].energyType].processTime for rid in rids]
-            idOfMinProcessTime = min(range(len(ProcessTime)), key=ProcessTime.__getitem__)
-            ridOfDid.append(rids[idOfMinProcessTime])
+        else:
+            ProcessTime = [
+                inputData.energys[inputData.regions[rid].energyType].processTime for rid in rids]
+            wid = widOfPid[deviceOnCoreProductionLine.index(did)]
+            WindowEntryTimes = windowEntryTimes[wid]
+            MixCost = np.array(ProcessTime) * inputData.K * WindowEntryTimes + np.array(
+                ProcessTime) * inputData.windows[wid].costFactor + np.array(InstallCosts)
+            idMinMixCost = np.argmin(MixCost)
+            ridOfDid.append(rids[idMinMixCost])
 
     print(ridOfDid)
     outputData_FV = OutputData(
-            deviceNum=inputData.D,
-            regionIndexs= ridOfDid,
-            stepNum=inputData.pipeline.edgeNum + 1,
-            timeWindowIndexs=widOfPid,
-        )
+        deviceNum=inputData.D,
+        regionIndexs=ridOfDid,
+        stepNum=inputData.pipeline.edgeNum + 1,
+        timeWindowIndexs=widOfPid,
+    )
 
     return outputData_FV
-
 
     # print(possible_regionIndexs)
     # n_selected  = min(int(len(possible_regionIndexs)/10), 100)
@@ -351,7 +392,7 @@ if __name__ == "__main__":
     # print('sample_output')
     # outputData.print()
     # print(computeCost(inputData, outputData))
-    
+
     # for i in range(1,11,1):
     #     outputData = eval('constants.sample_output{}'.format(i))
     #     print('sample_output{}'.format(i))
