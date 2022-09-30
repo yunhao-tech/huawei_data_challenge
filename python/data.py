@@ -151,7 +151,7 @@ class InputData:
     K: int
     "Estimated number of production times of the core production line"
     energys: List[Energy]
-    N: int;  'number of workshops'
+    N: int
     "Number of workshops"
     R: int
     "Number of workshop areas"
