@@ -4,9 +4,10 @@ from typing import Union
 
 
 class Config:
-    MAX_U32 = (2**32) - 1
-    ENERGY_TYPE_NUM = 5
-    ENGINE_TYPE_NUM = 3
+    MAX_U32: int = (2**32) - 1
+    ENERGY_TYPE_NUM: int = 5
+    ENGINE_TYPE_NUM: int = 3
+
 
 class WorkShop:
     def __init__(self):
@@ -15,8 +16,10 @@ class WorkShop:
         self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
         '''第i个元素储存支持第i种设备的area id(rid)，可以是列表（即多个满足条件的area）'''
         return
+
     def __str__(self):
         return "minTi:{0}\tmaxTi{1}\tanyRidOfEngine{2}\n".format(self.minTi, self.maxTi, self.anyRidOfEngine)
+
 
 def _parse_file(path: str) -> List[Union[int, List[int]]]:
     """Parse a file as a double sequence of int"""
@@ -37,12 +40,11 @@ def _parse_file(path: str) -> List[Union[int, List[int]]]:
 class Energy:
     '''
     Define Energy
-    
+
     Attributes:
         processTime
     '''
     processTime: int
-
 
 
 @dataclass
@@ -66,7 +68,7 @@ class Region:
 class Window:
     '''
     Define window
-    
+
     Attributes:
         canSelfLoop
         workshopIndex   
@@ -83,7 +85,7 @@ class Window:
         canSelfLoop = data[0]
         workshopIndex = data[1]
         costFactor = data[2]
-        enginesSupport = data[3 : 3 + Config.ENGINE_TYPE_NUM]
+        enginesSupport = data[3: 3 + Config.ENGINE_TYPE_NUM]
         return cls(
             canSelfLoop=canSelfLoop,
             workshopIndex=workshopIndex,
@@ -106,7 +108,7 @@ class Device:
 
     @classmethod
     def read(cls, data: List[int]) -> "Device":
-        return cls(engineType=data[0], energyCosts=data[1 : 1 + Config.ENERGY_TYPE_NUM])
+        return cls(engineType=data[0], energyCosts=data[1: 1 + Config.ENERGY_TYPE_NUM])
 
 
 @dataclass
