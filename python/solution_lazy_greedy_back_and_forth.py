@@ -1,3 +1,4 @@
+from os import device_encoding
 import sys
 import numpy as np
 # from copy import deepcopy
@@ -75,6 +76,24 @@ def computeWindowEntryTimes(inputData: InputData, timeWindowIndexs: List[int]):
     # Don't forget the last device
     windowEntryTimes[wid_next] += 1
     return windowEntryTimes, deviceOnCoreProductionLine
+
+
+def getMixCost(device, window, workshop):
+    rids = workshop.anyRidOfEngine[device.engineType]
+    InstallCosts = [
+        device.energyCosts[inputData.regions[rid].energyType] for rid in rids]
+    # processTime of a single device in an area/region
+    ProcessTime = [
+        inputData.energys[inputData.regions[rid].energyType].processTime for rid in rids]
+    # processTime of a workshop
+    processTimes = [
+        inputData.energys[energy_id].processTime for energy_id in workshop.energyTypes]
+    maxProcessTime = max(processTimes)
+    MixCosts = ((1-alpha) * np.array(ProcessTime) + (alpha * maxProcessTime)) * inputData.K + ((1 - beta) * np.array(ProcessTime) + beta * maxProcessTime) * \
+        window.costFactor + \
+        np.array(InstallCosts)
+    MixCost = np.min(MixCosts)
+    return MixCost
 
 
 def computeCost(inputData: InputData, outputData: OutputData):
@@ -289,17 +308,16 @@ def main(inputData: InputData) -> OutputData:
     ridsOfDid = [[] for i in range(inputData.D)]
     # window scheme for core production line
     widOfPid = [Config.MAX_U32] * (inputData.pipeline.edgeNum + 1)
-
-    # time-first forward greedy
-    # pid is the order of the device on the core production line
-    pid = 0
-
     for did, device in enumerate(inputData.devices):
         device.minTi = 0
         device.maxTi = len(widOfTi) - 1
         if isDeviceInPipeline[did]:
             device.winTi = None
 
+    # time-first forward greedy
+    # region
+    # pid is the order of the device on the core production line
+    pid = 0
     for curDid in queue.vec:
         device = inputData.devices[curDid]
         if isDeviceInPipeline[curDid]:
@@ -350,13 +368,14 @@ def main(inputData: InputData) -> OutputData:
                 postDevice.minTi = max(
                     postDevice.minTi, device.winTi + (edge.type == 0))
 
-    for did, device in enumerate(inputData.devices):
-        if isDeviceInPipeline[did]:
-            print(did, device.winTi)
+    # endregion
+    # for did, device in enumerate(inputData.devices):
+    #     if isDeviceInPipeline[did]:
+    #         print(did, device.winTi)
 
     # back-and-forth
     for epoch in range(5):
-        # cost-first backward lazy greedy    
+        # cost-first backward lazy greedy
         pid = inputData.pipeline.edgeNum  # start from right most
         # post pipeline device's Ti
 
@@ -365,8 +384,7 @@ def main(inputData: InputData) -> OutputData:
             if isDeviceInPipeline[curDid]:
                 window_old = inputData.windows[widOfPid[pid]]
                 workshop_old = workshops[window_old.workshopIndex]
-                processTimes_old = [inputData.energys[energy_id].processTime for energy_id in workshop_old.energyTypes]
-                maxProcessTime_old = max(processTimes_old)
+                mixCost_old = getMixCost(device, window_old, workshop_old)
                 for ti in range(device.maxTi, device.winTi - 1, -1):
                     wid = widOfTi[ti]
                     window = inputData.windows[wid]
@@ -379,11 +397,9 @@ def main(inputData: InputData) -> OutputData:
                         continue
 
                     # cost greedy
-                    processTimes = [inputData.energys[energy_id].processTime for energy_id in workshop.energyTypes]
-                    maxProcessTime = max(processTimes)
-                    if window.costFactor * maxProcessTime > window_old.costFactor * maxProcessTime_old:
+                    mixCost = getMixCost(device, window, workshop)
+                    if mixCost > mixCost_old:
                         continue
-
 
                     # select this window for the window scheme of the core production line
                     widOfPid[pid] = wid
@@ -434,8 +450,7 @@ def main(inputData: InputData) -> OutputData:
             if isDeviceInPipeline[curDid]:
                 window_old = inputData.windows[widOfPid[pid]]
                 workshop_old = workshops[window_old.workshopIndex]
-                processTimes_old = [inputData.energys[energy_id].processTime for energy_id in workshop_old.energyTypes]
-                maxProcessTime_old = max(processTimes_old)
+                mixCost_old = getMixCost(device, window_old, workshop_old)
                 for ti in range(device.minTi, device.winTi + 1):
                     wid = widOfTi[ti]
                     window = inputData.windows[wid]
@@ -447,11 +462,9 @@ def main(inputData: InputData) -> OutputData:
                     if len(workshop.anyRidOfEngine[device.engineType]) == 0:
                         continue
                     # cost greedy
-                    processTimes = [inputData.energys[energy_id].processTime for energy_id in workshop.energyTypes]
-                    maxProcessTime = max(processTimes)
-                    if window.costFactor * maxProcessTime > window_old.costFactor * maxProcessTime_old:
+                    mixCost = getMixCost(device, window, workshop)
+                    if mixCost > mixCost_old:
                         continue
-
 
                     # select this window for the window scheme of the core production line
                     widOfPid[pid] = wid
@@ -481,15 +494,17 @@ def main(inputData: InputData) -> OutputData:
                 exit()
             # record the workshop where the current device installed(can be skipped)
             workshop = workshops[inputData.regions[ridsOfDid[curDid]
-                                                    [0]].workshopIndex]
+                                                   [0]].workshopIndex]
             # update minTi for the next device
             for eid in nextEdgeMgr[curDid]:
                 edge = inputData.edges[eid]
                 postDid = edge.recvDevice
                 postDevice = inputData.devices[postDid]
-                postDevice.minTi = max(postDevice.minTi, workshop.minTi + (edge.type == 0))
+                postDevice.minTi = max(
+                    postDevice.minTi, workshop.minTi + (edge.type == 0))
                 if isDeviceInPipeline[curDid] and isDeviceInPipeline[postDid]:
-                    postDevice.minTi = max(postDevice.minTi, device.winTi + (edge.type == 0))
+                    postDevice.minTi = max(
+                        postDevice.minTi, device.winTi + (edge.type == 0))
 
     ridOfDid = []
     windowEntryTimes, deviceOnCoreProductionLine = computeWindowEntryTimes(
@@ -516,7 +531,7 @@ def main(inputData: InputData) -> OutputData:
             # print(maxProcessTime)
             wid = widOfPid[deviceOnCoreProductionLine.index(did)]
             WindowEntryTimes = windowEntryTimes[wid]
-            MixCost = ((1-alpha) * np.array(ProcessTime) + (alpha * maxProcessTime)) * inputData.K * WindowEntryTimes + ((2 - beta) * np.array(ProcessTime) + beta * maxProcessTime) * \
+            MixCost = ((1-alpha) * np.array(ProcessTime) + (alpha * maxProcessTime)) * inputData.K * WindowEntryTimes + ((1 - beta) * np.array(ProcessTime) + beta * maxProcessTime) * \
                 inputData.windows[wid].costFactor + np.array(InstallCosts)
             idMinMixCost = np.argmin(MixCost)
             ridOfDid.append(rids[idMinMixCost])
