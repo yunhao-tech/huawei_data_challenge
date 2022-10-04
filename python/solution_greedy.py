@@ -464,7 +464,7 @@ def main(inputData: InputData) -> OutputData:
         # print(tiOfDid)
 
         # cost-first forward greedy
-            # pid is the order of the device on the core production line
+        # pid is the order of the device on the core production line
         pid = 0
         # previous pipeline device's Ti
         preTi = 0
