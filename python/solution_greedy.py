@@ -1,4 +1,3 @@
-from calendar import c
 import sys
 import numpy as np
 # from copy import deepcopy
@@ -370,9 +369,8 @@ def main(inputData: InputData) -> OutputData:
     # post pipeline device's Ti
     postTi = len(widOfTi) - 1  # initialize with the latest timestamp
     maxTiOfDid = [len(widOfTi) - 1] * inputData.D
-    print(maxTiOfDid)
-    for did in reversed(queue.vec):
-        curDid = did
+
+    for curDid in reversed(queue.vec):
         if isDeviceInPipeline[curDid]:
             endTi = maxTiOfDid[curDid]
             engineType = inputData.devices[curDid].engineType
@@ -413,7 +411,7 @@ def main(inputData: InputData) -> OutputData:
             device = inputData.devices[curDid]
             minInstallCost_old = np.ma.masked_equal(np.array(
                 [device.energyCosts[energyType] for energyType in workshop_old.energyTypes]), 0, copy=False).min()
-            print(minInstallCost_old)
+            # print(minInstallCost_old)
             engineType = inputData.devices[curDid].engineType
             for i in reversed(workshopIndices_sorted_by_maxTi):
                 workshop = workshops[i]
@@ -425,7 +423,7 @@ def main(inputData: InputData) -> OutputData:
                     continue
                 if workshop.minTi <= maxTiOfDid[curDid]:
                     ridsOfDid[curDid] = workshop.anyRidOfEngine[engineType]
-                    tiOfDid[curDid] = maxTiOfDid[curDid]
+                    tiOfDid[curDid] = workshop.maxTi
                     break
         if len(ridsOfDid[curDid]) == 0:
             print("wrong in %d" % curDid)
@@ -437,14 +435,16 @@ def main(inputData: InputData) -> OutputData:
         # update maxTi for the next device
         for eid in prevEdgeMgr[curDid]:
             edge = inputData.edges[eid]
-            curDid = edge.sendDevice
+            preDid = edge.sendDevice
             if edge.type == 0:
                 requestTi = workshop.maxTi - 1
             else:
                 requestTi = workshop.maxTi
             # maxTiOfDid stores the latest possible timestamp given by the topologival order
             # the requestTi is computed from workshop.maxTi, as if every time the device enter the workshop is the first time (no need to count the maximum loopback)
-            maxTiOfDid[curDid] = min(maxTiOfDid[curDid], requestTi)
+            maxTiOfDid[preDid] = min(maxTiOfDid[preDid], requestTi)
+
+    print(tiOfDid)
 
     ridOfDid = []
     windowEntryTimes, deviceOnCoreProductionLine = computeWindowEntryTimes(
@@ -490,8 +490,9 @@ def main(inputData: InputData) -> OutputData:
 if __name__ == "__main__":
     # The following is only used for local tests
     # inputData = InputData.from_file(sys.argv[1])
-    # inputData = InputData.from_file('./sample/sample.in')
+    inputData = InputData.from_file('./sample/sample.in')
     # inputData = InputData.from_file('./sample/sample_test.in')
+    # inputData = InputData.from_file('./sample/sample scratch.in')
     outputData = main(inputData)
     outputData.print()
     print(computeCost(inputData, outputData))
