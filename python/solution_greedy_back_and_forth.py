@@ -6,8 +6,8 @@ from data import InputData, OutputData, Config, Edge
 from typing import List
 
 DEBUG = False
-alpha = 0.5
-beta = 0.5
+alpha = 0.7
+beta = 0.7
 
 
 class WorkShop:
@@ -334,17 +334,19 @@ def main(inputData: InputData) -> OutputData:
 
                 if workshop.maxTi >= device.minTi:
                     ridsOfDid[curDid] = workshop.anyRidOfEngine[device.engineType]
+                    device.Ti = workshop.minTi
                     break
         if len(ridsOfDid[curDid]) == 0:
             print("wrong in %d" % curDid)
             exit()
 
+        workshop = workshops[inputData.regions[ridsOfDid[curDid]
+                                               [0]].workshopIndex]
         # update minTi for the next device
         for eid in nextEdgeMgr[curDid]:
             edge = inputData.edges[eid]
             postDid = edge.recvDevice
             postDevice = inputData.devices[postDid]
-            # the requestTi is computed from workshop.minTi, as if every time the device enter the workshop is the first time (no need to count the max loopback constraint)
             postDevice.minTi = max(
                 postDevice.minTi, workshop.minTi + (edge.type == 0))
             if isDeviceInPipeline[curDid] and isDeviceInPipeline[postDid]:
@@ -363,7 +365,7 @@ def main(inputData: InputData) -> OutputData:
         device = inputData.devices[curDid]
         if isDeviceInPipeline[curDid]:
             window_old = inputData.windows[widOfPid[pid]]
-            for ti in range(device.maxTi, device.winTi, -1):
+            for ti in range(device.maxTi, device.winTi - 1, -1):
                 wid = widOfTi[ti]
                 window = inputData.windows[wid]
                 # if the window doesn't support pre-processing of the device of this engine type, i.e window selection constraint
@@ -396,10 +398,11 @@ def main(inputData: InputData) -> OutputData:
                     continue
                 minInstallCost = np.ma.masked_equal(np.array(
                     [device.energyCosts[energyType] for energyType in workshop.energyTypes]), 0, copy=False).min()
-                if minInstallCost >= minInstallCost_old:
+                if minInstallCost > minInstallCost_old:
                     continue
                 if workshop.minTi <= device.maxTi:
                     ridsOfDid[curDid] = workshop.anyRidOfEngine[device.engineType]
+                    device.Ti = workshop.maxTi
                     break
         if len(ridsOfDid[curDid]) == 0:
             print("wrong in %d" % curDid)
@@ -414,7 +417,7 @@ def main(inputData: InputData) -> OutputData:
             # the requestTi is computed from workshop.maxTi, as if every time the device enter the workshop is the first time (no need to count the maximum loopback)
             preDevice.maxTi = min(
                 preDevice.maxTi, workshop.maxTi - (edge.type == 0))
-            if isDeviceInPipeline[curDid] and isDeviceInPipeline[postDid]:
+            if isDeviceInPipeline[curDid] and isDeviceInPipeline[preDid]:
                 preDevice.maxTi = min(
                     preDevice.maxTi, device.winTi - (edge.type == 0))
 
