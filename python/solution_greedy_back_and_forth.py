@@ -55,7 +55,6 @@ def computeWindowEntryTimes(inputData: InputData, timeWindowIndexs: List[int]):
     for eid in inputData.pipeline.edgeIndexs:
         edge = inputData.edges[eid]
         edgeOnCoreProductionLine.append(edge)
-        # print("edge {} type {}".format(eid, edge.type))
 
     deviceOnCoreProductionLine: List[int] = []
     for edge in edgeOnCoreProductionLine:
@@ -134,13 +133,13 @@ def computeCost(inputData: InputData, outputData: OutputData):
     windowProcessCost *= inputData.K
     windowMatchingCost = windowProcessCost + windowPresetCost
     totalCost = areaMatchingCost + windowMatchingCost
-    if DEBUG:
-        print('areaMatchingCost:\t{}'.format(areaMatchingCost))
-        print('windowPresetCost:\t{}'.format(windowPresetCost))
-        print('windowProcessCost:\t{}'.format(windowProcessCost))
-        print('windowProcessTime:\t{}'.format(windowProcessTime))
-        print('windowEntryTimes:\t{}'.format(windowEntryTimes))
-        print('windowMatchingCost:\t{}'.format(windowMatchingCost))
+    # if DEBUG:
+    #     print('areaMatchingCost:\t{}'.format(areaMatchingCost))
+    #     print('windowPresetCost:\t{}'.format(windowPresetCost))
+    #     print('windowProcessCost:\t{}'.format(windowProcessCost))
+    #     print('windowProcessTime:\t{}'.format(windowProcessTime))
+    #     print('windowEntryTimes:\t{}'.format(windowEntryTimes))
+    #     print('windowMatchingCost:\t{}'.format(windowMatchingCost))
     return totalCost
 
 
@@ -358,7 +357,7 @@ def main(inputData: InputData) -> OutputData:
 
     # back-and-forth
     for epoch in range(5):
-        # cost-first backward lazy greedy    
+        # cost-first backward lazy greedy
         pid = inputData.pipeline.edgeNum  # start from right most
         # post pipeline device's Ti
 
@@ -472,15 +471,17 @@ def main(inputData: InputData) -> OutputData:
                 exit()
             # record the workshop where the current device installed(can be skipped)
             workshop = workshops[inputData.regions[ridsOfDid[curDid]
-                                                    [0]].workshopIndex]
+                                                   [0]].workshopIndex]
             # update minTi for the next device
             for eid in nextEdgeMgr[curDid]:
                 edge = inputData.edges[eid]
                 postDid = edge.recvDevice
                 postDevice = inputData.devices[postDid]
-                postDevice.minTi = max(postDevice.minTi, workshop.minTi + (edge.type == 0))
+                postDevice.minTi = max(
+                    postDevice.minTi, workshop.minTi + (edge.type == 0))
                 if isDeviceInPipeline[curDid] and isDeviceInPipeline[postDid]:
-                    postDevice.minTi = max(postDevice.minTi, device.winTi + (edge.type == 0))
+                    postDevice.minTi = max(
+                        postDevice.minTi, device.winTi + (edge.type == 0))
 
     ridOfDid = []
     windowEntryTimes, deviceOnCoreProductionLine = computeWindowEntryTimes(
@@ -498,13 +499,9 @@ def main(inputData: InputData) -> OutputData:
                 inputData.energys[inputData.regions[rid].energyType].processTime for rid in rids]
             # processTime of a workshop
             workshop = workshops[inputData.regions[rids[0]].workshopIndex]
-            # print(workshop.index)
             processTimes = [
                 inputData.energys[energy_id].processTime for energy_id in workshop.energyTypes]
             maxProcessTime = max(processTimes)
-            # print(ProcessTime)
-            # print(processTimes)
-            # print(maxProcessTime)
             wid = widOfPid[deviceOnCoreProductionLine.index(did)]
             WindowEntryTimes = windowEntryTimes[wid]
             MixCost = ((1-alpha) * np.array(ProcessTime) + (alpha * maxProcessTime)) * inputData.K * WindowEntryTimes + ((2 - beta) * np.array(ProcessTime) + beta * maxProcessTime) * \
