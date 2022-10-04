@@ -2,6 +2,7 @@ import sys
 import itertools
 # from sample_data import InputData, OutputData, Config, Edge
 from data import InputData, OutputData, Config, Edge
+
 from typing import List 
 
 DEBUG = False
@@ -217,6 +218,8 @@ def main(inputData: InputData) -> OutputData:
             queue.Push(did)
 
     # distribute which area for each device
+
+
     ridsOfDid = [[] for i in range(inputData.D)]
     minTiOfDid = [0] * inputData.D
 
@@ -255,6 +258,7 @@ def main(inputData: InputData) -> OutputData:
                 preTi = ti
 
                 # put current device to those region/areas
+
                 ridsOfDid[curDid] = workshop.anyRidOfEngine[engineType]
                 break
         else:
@@ -265,6 +269,7 @@ def main(inputData: InputData) -> OutputData:
                     continue
 
                 if workshop.maxTi >= minTiOfDid[curDid]:
+
                     ridsOfDid[curDid] = workshop.anyRidOfEngine[engineType]
                     break
         if len(ridsOfDid[curDid]) == 0:
@@ -283,6 +288,7 @@ def main(inputData: InputData) -> OutputData:
             inCnt[curDid] = inCnt[curDid] - 1
             if inCnt[curDid] == 0:
                 queue.Push(curDid)
+
 
     # print(ridsOfDid)
     possible_regionIndexs = [p for p in itertools.product(*ridsOfDid)]
@@ -321,7 +327,7 @@ if __name__ == "__main__":
     # inputData = InputData.from_file('./sample/sample.in')
     outputData = main(inputData)
     outputData.print()
-    # print(computeCost(inputData, outputData))
+
     # outputData = constants.sample_output
     # outputData.print()
     # print(computeCost(inputData, outputData))
