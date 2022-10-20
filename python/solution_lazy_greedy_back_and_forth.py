@@ -1,4 +1,3 @@
-from os import device_encoding
 import sys
 import numpy as np
 # from copy import deepcopy
@@ -56,7 +55,6 @@ def computeWindowEntryTimes(inputData: InputData, timeWindowIndexs: List[int]):
     for eid in inputData.pipeline.edgeIndexs:
         edge = inputData.edges[eid]
         edgeOnCoreProductionLine.append(edge)
-        # print("edge {} type {}".format(eid, edge.type))
 
     deviceOnCoreProductionLine: List[int] = []
     for edge in edgeOnCoreProductionLine:
@@ -153,13 +151,13 @@ def computeCost(inputData: InputData, outputData: OutputData):
     windowProcessCost *= inputData.K
     windowMatchingCost = windowProcessCost + windowPresetCost
     totalCost = areaMatchingCost + windowMatchingCost
-    if DEBUG:
-        print('areaMatchingCost:\t{}'.format(areaMatchingCost))
-        print('windowPresetCost:\t{}'.format(windowPresetCost))
-        print('windowProcessCost:\t{}'.format(windowProcessCost))
-        print('windowProcessTime:\t{}'.format(windowProcessTime))
-        print('windowEntryTimes:\t{}'.format(windowEntryTimes))
-        print('windowMatchingCost:\t{}'.format(windowMatchingCost))
+    # if DEBUG:
+    #     print('areaMatchingCost:\t{}'.format(areaMatchingCost))
+    #     print('windowPresetCost:\t{}'.format(windowPresetCost))
+    #     print('windowProcessCost:\t{}'.format(windowProcessCost))
+    #     print('windowProcessTime:\t{}'.format(windowProcessTime))
+    #     print('windowEntryTimes:\t{}'.format(windowEntryTimes))
+    #     print('windowMatchingCost:\t{}'.format(windowMatchingCost))
     return totalCost
 
 
@@ -301,7 +299,7 @@ def main(inputData: InputData) -> OutputData:
             if inCnt[curDid] == 0:
                 queue.Push(curDid)
 
-    print(queue.vec)
+    # print(queue.vec)
     # endregion
 
     # distribute which area for each device
@@ -506,6 +504,13 @@ def main(inputData: InputData) -> OutputData:
                     postDevice.minTi = max(
                         postDevice.minTi, device.winTi + (edge.type == 0))
 
+    for did in range(inputData.D):
+        print(inputData.devices[did].minTi, end='')
+    print('')
+    for did in range(inputData.D):
+        print(inputData.devices[did].maxTi, end='')
+    print('')
+
     ridOfDid = []
     windowEntryTimes, deviceOnCoreProductionLine = computeWindowEntryTimes(
         inputData, widOfPid)
@@ -549,8 +554,8 @@ def main(inputData: InputData) -> OutputData:
 
 if __name__ == "__main__":
     # The following is only used for local tests
-    # inputData = InputData.from_file(sys.argv[1])
-    inputData = InputData.from_file('./sample/sample.in')
+    inputData = InputData.from_file(sys.argv[1])
+    # inputData = InputData.from_file('./sample/sample.in')
     # inputData = InputData.from_file('./sample/sample_test.in')
     # inputData = InputData.from_file('./sample/sample scratch.in')
     outputData = main(inputData)

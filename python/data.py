@@ -1,222 +1,201 @@
-from dataclasses import dataclass
+#!/usr/bin/env python3
 from typing import List
-from typing import Union
+from dataclasses import dataclass
+import os.path
+import sys
+
+from config import Config, Debug
+from reader import IntReader
 
 
-class Config:
-    MAX_U32: int = (2**32) - 1
-    ENERGY_TYPE_NUM: int = 5
-    ENGINE_TYPE_NUM: int = 3
-
-
-class WorkShop:
-    def __init__(self):
-        self.minTi = Config.MAX_U32
-        self.maxTi = 0
-        self.anyRidOfEngine = [Config.MAX_U32] * Config.ENGINE_TYPE_NUM
-        '''第i个元素储存支持第i种设备的area id(rid)，可以是列表（即多个满足条件的area）'''
-        return
-
-    def __str__(self):
-        return "minTi:{0}\tmaxTi{1}\tanyRidOfEngine{2}\n".format(self.minTi, self.maxTi, self.anyRidOfEngine)
-
-
-def _parse_file(path: str) -> List[Union[int, List[int]]]:
-    """Parse a file as a double sequence of int"""
-    with open(path) as fh:
-        stream_raw = fh.read().splitlines()
-        stream = []
-        for line in stream_raw:
-            row = [int(el) for el in line.split(" ")]
-            if len(row) == 0:
-                continue
-            if len(row) == 1:
-                yield row[0]
-            else:
-                yield row
+@dataclass
+class Grade:
+    id: int
+    score: float = 0
+    status: str = "failed"
+    msg: str = Config.ERR_MSG_UNABLE_JUDGED
 
 
 @dataclass
 class Energy:
-    '''
-    Define Energy
-
-    Attributes:
-        processTime
-    '''
     processTime: int
+
+    @classmethod
+    def from_reader(cls, reader: IntReader):
+        processTime = reader.Read()
+        return cls(processTime)
 
 
 @dataclass
 class Region:
-    '''
-    Define region
-
-    Attributes:
-        workshopIndex
-        energyType
-    '''
     workshopIndex: int
     energyType: int
+    energyLimit: int
 
     @classmethod
-    def read(cls, data: List[int]) -> "Region":
-        return cls(workshopIndex=data[0], energyType=data[1])
+    def from_reader(cls, reader: IntReader):
+        workshopIndex = reader.Read()
+        energyType = reader.Read()
+        energyLimit = reader.Read()
+        return cls(
+            workshopIndex=workshopIndex, energyType=energyType, energyLimit=energyLimit
+        )
 
 
 @dataclass
 class Window:
-    '''
-    Define window
-
-    Attributes:
-        canSelfLoop
-        workshopIndex   
-        costFactor
-        enginesSupport
-    '''
     canSelfLoop: int
     workshopIndex: int
     costFactor: int
-    enginesSupport: List[int]
+    engineAbles: List[int]
 
     @classmethod
-    def read(cls, data: List[int]) -> "Window":
-        canSelfLoop = data[0]
-        workshopIndex = data[1]
-        costFactor = data[2]
-        enginesSupport = data[3: 3 + Config.ENGINE_TYPE_NUM]
+    def from_reader(cls, reader: IntReader):
+        canSelfLoop = reader.Read()
+        workshopIndex = reader.Read()
+        costFactor = reader.Read()
+        engineAbles = []
+        for i in range(Config.ENGINE_NUM):
+            engineAbles.append(reader.Read())
         return cls(
             canSelfLoop=canSelfLoop,
             workshopIndex=workshopIndex,
             costFactor=costFactor,
-            enginesSupport=enginesSupport,
+            engineAbles=engineAbles,
         )
 
 
 @dataclass
 class Device:
-    '''
-    Define device
-
-    Attributes: 
-        engineType
-        energyCosts
-    '''
     engineType: int
     energyCosts: List[int]
+    energyUses: List[int]
 
     @classmethod
-    def read(cls, data: List[int]) -> "Device":
-        return cls(engineType=data[0], energyCosts=data[1: 1 + Config.ENERGY_TYPE_NUM])
+    def from_reader(cls, reader: IntReader):
+        engineType = reader.Read()
+        energyCosts = []
+        for i in range(Config.ENERGY_NUM):
+            energyCosts.append(reader.Read())
+        energyUses = []
+        for i in range(Config.ENERGY_NUM):
+            energyUses.append(reader.Read())
+
+        return cls(
+            engineType=engineType, energyCosts=energyCosts, energyUses=energyUses
+        )
 
 
 @dataclass
 class Edge:
-    '''
-    Define edge in flow chart
-
-    Attributes:
-        type
-        sendDevice
-        recvDevice
-    '''
     type: int
-    sendDevice: int
-    recvDevice: int
+    sendDeviceIndex: int
+    recvDeviceIndex: int
 
     @classmethod
-    def read(cls, data: List[int]) -> "Edge":
-        return cls(type=data[0], sendDevice=data[1], recvDevice=data[2])
+    def from_reader(cls, reader: IntReader):
+        type = reader.Read()
+        sendDeviceIndex = reader.Read()
+        recvDeviceIndex = reader.Read()
+        return cls(
+            type=type, sendDeviceIndex=sendDeviceIndex, recvDeviceIndex=recvDeviceIndex
+        )
 
 
 @dataclass
 class Pipeline:
-    '''
-    Pipeline of the core production line
-
-    Attributes:
-        edgeNum
-        edgeIndexs
-    '''
+    k: int
     edgeNum: int
     edgeIndexs: List[int]
 
     @classmethod
-    def read(cls, edgeNum: int, data: List[int]) -> "Pipeline":
-
-        return cls(edgeNum=edgeNum, edgeIndexs=data[:edgeNum])
+    def from_reader(cls, reader: IntReader):
+        k = reader.Read()
+        edgeNum = reader.Read()
+        if edgeNum > Config.MAX_EDGE_NUM:
+            return
+        edgeIndexs = []
+        for i in range(edgeNum):
+            edgeIndexs.append(reader.Read())
+        return cls(k=k, edgeNum=edgeNum, edgeIndexs=edgeIndexs)
 
 
 @dataclass
 class InputData:
-    K: int
-    "Estimated number of production times of the core production line"
     energys: List[Energy]
     N: int
-    "Number of workshops"
     R: int
-    "Number of workshop areas"
     regions: List[Region]
-    '''List of Regions'''
     L: int
-    "Maximum number of loopbacks"
     M: int
-    "Number of windows in the first loopback mode"
     W: int
-    "Number of windows"
     windows: List[Window]
     D: int
-    "Number of devices"
     devices: List[Device]
     E: int
-    "Number of edges in a flowchart"
     edges: List[Edge]
-    pipeline: Pipeline
+    T: int
+    pipelines: List[Pipeline]
 
     @classmethod
     def from_file(cls, path: str):
+        """Read input data from a pathg"""
+        reader = IntReader(path)
+        data = cls.from_reader(reader)
+        return data
 
-        stream = _parse_file(path)
-
-        K = next(stream)
-
-        x = next(stream)
+    @classmethod
+    def from_reader(cls, reader: IntReader) -> "InputData":
         energys = []
-        for i in range(Config.ENERGY_TYPE_NUM):
-            energys.append(Energy(x[i]))
+        for i in range(Config.ENERGY_NUM):
+            energy = Energy.from_reader(reader)
+            energys.append(energy)
 
-        N = next(stream)
-        R = next(stream)
+        N = reader.Read()
+        R = reader.Read()
+        if R > Config.MAX_REGION_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
         regions = []
         for i in range(R):
-            region = Region.read(next(stream))
+            region = Region.from_reader(reader)
             regions.append(region)
 
-        L = next(stream)
-        M = next(stream)
+        L = reader.Read() + 1
+        M = reader.Read()
 
-        W = next(stream)
+        W = reader.Read()
+        if W > Config.MAX_WINDOW_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
         windows = []
         for i in range(W):
-            window = Window.read(next(stream))
+            window = Window.from_reader(reader)
             windows.append(window)
 
-        D = next(stream)
+        D = reader.Read()
+        if D > Config.MAX_DEVICE_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
         devices = []
         for i in range(D):
-            device = Device.read(next(stream))
+            device = Device.from_reader(reader)
             devices.append(device)
 
-        E = next(stream)
+        E = reader.Read()
+        if E > Config.MAX_EDGE_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
         edges = []
         for i in range(E):
-            edge = Edge.read(next(stream))
+            edge = Edge.from_reader(reader)
             edges.append(edge)
 
-        pipeline = Pipeline.read(next(stream), next(stream))
+        T = reader.Read()
+        if T > Config.MAX_PIPELINE_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
+        pipelines = []
+        for i in range(T):
+            pipeline = Pipeline.from_reader(reader)
+            pipelines.append(pipeline)
+
         return cls(
-            K=K,
             energys=energys,
             N=N,
             R=R,
@@ -229,23 +208,101 @@ class InputData:
             devices=devices,
             E=E,
             edges=edges,
-            pipeline=pipeline,
+            T=T,
+            pipelines=pipelines,
         )
+
+    def Write(self):
+        print(self.energys)
+        print(self.N)
+        print(self.R)
+        print(self.regions)
+        print(self.L)
+        print(self.M)
+        print(self.W)
+        print(self.windows)
+        print(self.D)
+        print(self.devices)
+        print(self.E)
+        print(self.edges)
+        print(self.pipelines)
+        return
 
 
 @dataclass
 class OutputData:
     deviceNum: int
     regionIndexs: List[int]
-    stepNum: int
-    timeWindowIndexs: List[int]
+    pipelineNum: int
+    widMgr: List[List[int]]
 
-    def print(self):
+    @classmethod
+    def from_file(cls, path: str):
+        """Read input data from a pathg"""
+        reader = IntReader(path)
+        data = OutputData.from_reader(reader)
+        return data
+
+    @classmethod
+    def from_reader(cls, reader: IntReader) -> "OutputData":
+        deviceNum = reader.Read()
+        if deviceNum >= Config.MAX_DEVICE_NUM:
+            raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
+        regionIndexs = []
+        for i in range(deviceNum):
+            regionIndex = reader.Read()
+            regionIndexs.append(regionIndex)
+
+        widMgr = []
+        pipelineNum = reader.Read()
+        for i in range(pipelineNum):
+            stepNum = reader.Read()
+            if stepNum >= Config.MAX_STEP_NUM:
+                raise ValueError(Config.ERR_MSG_OUTPUT_NUMBER_VIOLATION)
+            wids = []
+            for i in range(stepNum):
+                wid = reader.Read()
+                wids.append(wid)
+            widMgr.append(wids)
+
+        return cls(
+            deviceNum=deviceNum,
+            regionIndexs=regionIndexs,
+            pipelineNum=pipelineNum,
+            widMgr=widMgr,
+        )
+
+    def print(self, fh=sys.stdout):
         def PrintVec(vec):
-            print(" ".join(str(el) for el in vec))
+            fh.write(" ".join(str(el) for el in vec) + "\n")
 
-        print(self.deviceNum)
+        fh.write(f"{self.deviceNum}\n")
         PrintVec(self.regionIndexs)
 
-        print(self.stepNum)
-        PrintVec(self.timeWindowIndexs)
+        fh.write(f"{self.pipelineNum}\n")
+        for row in self.widMgr:
+            fh.write(f"{len(row)} ")
+            PrintVec(row)
+
+
+class InputDataMgr:
+    @staticmethod
+    def from_folder(path: str) -> List[InputData]:
+        datas = []
+        for caseId in range(Config.CASE_NUM):
+            data = InputData.from_file(os.path.join(
+                path, "case" + str(caseId) + ".in"))
+            datas.append(data)
+        return datas
+
+
+class OutputDataMgr:
+    @staticmethod
+    def from_folder(path) -> List[OutputData]:
+        datas = []
+        for caseId in range(Config.CASE_NUM):
+            data = OutputData.from_file(
+                os.path.join(path, "case" + str(caseId) + ".out")
+            )
+            datas.append(data)
+        return datas
