@@ -316,7 +316,7 @@ def main(inputData: InputData) -> OutputData:
     ridOfDid = [MAX_U32] * inputData.D
     # ridsOfDid = [[] for i in range(inputData.D)]
     # window for device on production line
-    widOfPid = [MAX_U32] * inputData.D
+    widOfPid = [[] for i in range(inputData.D)]
     for did, device in enumerate(inputData.devices):
         device.minTi = 0
         device.maxTi = len(widOfTi) - 1
@@ -351,7 +351,7 @@ def main(inputData: InputData) -> OutputData:
                 if ridOfDid[curDid] == MAX_U32:
                     continue
                 # select this window for the window scheme of the core production line
-                widOfPid[curDid] = [wid]
+                widOfPid[curDid].append(wid)
                 device.winTi = ti
 
                 # put current device to those region/areas
@@ -406,8 +406,8 @@ def main(inputData: InputData) -> OutputData:
         wids = []
         for edgeIndex in pipeline.edgeIndexs:
             wids.append(
-                widOfPid[inputData.edges[edgeIndex].sendDeviceIndex])
-        wids.append(widOfPid[inputData.edges[edgeIndex].recvDeviceIndex])
+                widOfPid[inputData.edges[edgeIndex].sendDeviceIndex][0])
+        wids.append(widOfPid[inputData.edges[edgeIndex].recvDeviceIndex][0])
         if len(wids) != pipeline.edgeNum + 1:
             raise ValueError(f'{len(wids)}, {pipeline.edgeNum + 1}')
         widMgr.append(wids)
