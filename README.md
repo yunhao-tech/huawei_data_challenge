@@ -38,4 +38,4 @@ which will print the output to the standard output. To redirect the output to a 
 ./solution < sample/sample.in > sample.ans
 ```
 ---
-Ranked 7th place in round 1, 4th place in round2(final ranking)
+Ranked 7th place in round 1, 4th place in round 2(final ranking)
